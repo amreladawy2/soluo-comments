@@ -1,0 +1,28 @@
+name: Soluo deal comments
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"  # every Monday 08:00 UTC; the job skips every other week -> runs every 14 days
+  workflow_dispatch:      # "Run workflow" button for a manual run
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Post comments
+        env:
+          SOLUO_LINK: ${{ secrets.SOLUO_LINK }}
+          SOLUO_USERNAME: ${{ secrets.SOLUO_USERNAME }}
+          SOLUO_PASSWORD: ${{ secrets.SOLUO_PASSWORD }}
+        run: |
+          # cron has no "every 14 days", so run weekly and skip odd weeks (manual runs always go)
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ] && [ $(( $(date +%s) / 604800 % 2 )) -ne 0 ]; then
+            echo "Off week, skipping."
+            exit 0
+          fi
+          python soluo_comments.py
